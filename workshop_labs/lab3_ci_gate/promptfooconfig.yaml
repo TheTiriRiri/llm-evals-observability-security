@@ -1,0 +1,37 @@
+description: "Lab 3: Baseline vs Candidate Prompt Regression Gate"
+
+# Both prompt files are full templates: they contain {{context}} and {{query}}.
+# test_ci_gate.py renders them the same way, so pytest and promptfoo evaluate identical prompts.
+prompts:
+  - file://prompt_baseline.txt
+  - file://prompt_candidate_regressed.txt
+
+providers:
+  - id: openai:gpt-4o-mini
+    config:
+      temperature: 0
+
+# One test per row of the same Golden Dataset the pytest gate uses
+# (columns become vars: query, context, must_contain, expected_citation).
+tests: file://golden_dataset.jsonl
+
+defaultTest:
+  assert:
+    # Schema: valid JSON (a fenced ```json block is extracted, same rule as test_ci_gate.py),
+    # non-empty answer, and the expected policy ID among the citations.
+    - type: javascript
+      metric: schema_and_citation
+      value: |
+        const fenced = output.match(/```(?:json)?\s*\n([\s\S]*?)```/);
+        const text = fenced ? fenced[1] : output.trim();
+        let parsed;
+        try { parsed = JSON.parse(text); } catch (e) { return { pass: false, score: 0, reason: "invalid JSON" }; }
+        const ok = typeof parsed.answer === "string" && parsed.answer.length > 0
+          && Array.isArray(parsed.citations) && parsed.citations.includes(context.vars.expected_citation);
+        return { pass: ok, score: ok ? 1 : 0, reason: ok ? "ok" : "missing answer or expected citation" };
+    - type: icontains
+      metric: must_contain
+      value: "{{must_contain}}"
+    - type: llm-rubric
+      metric: faithfulness
+      value: "Every factual claim in the answer is supported by this context: {{context}}"
