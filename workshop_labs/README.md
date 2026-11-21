@@ -13,14 +13,14 @@ python -m spacy download en_core_web_sm   # Lab 5 (Presidio NER, ~12 MB)
 python check_env.py                       # exits 1 if something required is missing
 ```
 
-`OPENAI_API_KEY` is needed only for the live variants (real judge in Lab 1, `LIVE_EVAL=1` in Lab 3, red team in Lab 6). The Lab 6 red team runs in local generation mode, so it needs no promptfoo account (details in the Lab 6 README). Langfuse keys are optional: without them Lab 2 prints the trace locally. Run `check_env.py` a few days before the workshop, not on the morning of.
+`OPENAI_API_KEY` is needed only for the live variants (real judge in Lab 1, `LIVE_EVAL=1` in Lab 3, the red-team scan in Lab 6; the Lab 6 regression tests run offline). The Lab 6 red team runs in local generation mode, so it needs no promptfoo account (details in the Lab 6 README). Langfuse keys are optional: without them Lab 2 prints the trace locally. Run `check_env.py` a few days before the workshop, not on the morning of.
 
 For **Lab 3** and **Lab 6**, install Promptfoo (Node.js 18+ required):
 ```bash
 npm install -g promptfoo
 ```
 
-For **Lab 6** (optional broad vulnerability probe):
+For **Lab 6** (optional: a broad probe of the bare model, not of your guardrails):
 ```bash
 pip install garak
 ```

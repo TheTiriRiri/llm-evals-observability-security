@@ -13,14 +13,14 @@ python -m spacy download en_core_web_sm   # Lab 5 (NER dla Presidio, ~12 MB)
 python check_env.py                       # kończy się kodem 1, jeśli brakuje czegoś wymaganego
 ```
 
-`OPENAI_API_KEY` jest potrzebny tylko w wariantach na żywo (prawdziwy sędzia w Labie 1, `LIVE_EVAL=1` w Labie 3, red teaming w Labie 6). Red teaming w Labie 6 działa w trybie lokalnego generowania, więc nie wymaga konta w promptfoo (szczegóły w README Labu 6). Klucze Langfuse są opcjonalne: bez nich Lab 2 wypisuje trace lokalnie. Uruchom `check_env.py` kilka dni przed warsztatami, a nie rano w dniu warsztatów.
+`OPENAI_API_KEY` jest potrzebny tylko w wariantach na żywo (prawdziwy sędzia w Labie 1, `LIVE_EVAL=1` w Labie 3, skan red teamingowy w Labie 6; testy regresyjne z Labu 6 działają offline). Red teaming w Labie 6 działa w trybie lokalnego generowania, więc nie wymaga konta w promptfoo (szczegóły w README Labu 6). Klucze Langfuse są opcjonalne: bez nich Lab 2 wypisuje trace lokalnie. Uruchom `check_env.py` kilka dni przed warsztatami, a nie rano w dniu warsztatów.
 
 Do **Labu 3** i **Labu 6** zainstaluj Promptfoo (wymagany Node.js 18+):
 ```bash
 npm install -g promptfoo
 ```
 
-Do **Labu 6** (opcjonalne, szerokie skanowanie podatności):
+Do **Labu 6** (opcjonalne: szerokie sondowanie samego modelu, a nie twoich guardrails):
 ```bash
 pip install garak
 ```

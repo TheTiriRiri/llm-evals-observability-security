@@ -1,0 +1,27 @@
+{
+  "prompt_file": "prompt_candidate_regressed.txt",
+  "prompt_sha256": "20f2660593320e496f3ba3d3593af7d5b1842ca83dbb8369fb994f2a812a90b7",
+  "source": "hand-written examples of typical model behaviour for this prompt (not a recording); replace with real outputs via LIVE_EVAL=1 RECORD_FIXTURES=1",
+  "outputs": {
+    "g01": "{\"answer\": \"Great question! You can get a full refund on an annual plan within 14 days of purchase.\", \"citations\": [\"P-101\"]}",
+    "g02": "{\"answer\": \"Your data is in good hands! EU backups live in Frankfurt (eu-central-1), encrypted with AES-256.\", \"citations\": [\"S-12\"]}",
+    "g03": "{\"answer\": \"Sure thing! Your endpoint needs to reply with a 2xx status within 5 seconds.\", \"citations\": [\"W-05\"]}",
+    "g04": "{\"answer\": \"Great question! We support TLS 1.2 and TLS 1.3 on every endpoint.\", \"citations\": [\"S-03\"]}",
+    "g05": "{\"answer\": \"You can register up to 10 active webhook endpoints per workspace. Happy building!\", \"citations\": [\"W-01\"]}",
+    "g06": "{\"answer\": \"SAML SSO is part of our Enterprise plan, so it isn't included in Starter. Let us know if you'd like to upgrade!\", \"citations\": [\"P-02\"]}",
+    "g07": "{\"answer\": \"You can upload files of up to 25 MB each. Enjoy!\", \"citations\": [\"L-09\"]}",
+    "g08": "{\"answer\": \"Great question! /v2/search allows 120 requests per minute per token.\", \"citations\": [\"API-19\"]}",
+    "g09": "{\"answer\": \"The Python SDK works with Python 3.10 or newer. Happy coding!\", \"citations\": [\"SDK-04\"]}",
+    "g10": "{\"answer\": \"Absolutely! Just call GET /v2/audit-logs with an admin-scoped token.\", \"citations\": [\"A-11\"]}",
+    "g11": "{\"answer\": \"Welcome aboard! New workspaces get a 14-day free trial of all Pro features.\", \"citations\": [\"P-01\"]}",
+    "g12": "{\"answer\": \"Sorry to see you go! Owners can cancel anytime under Billing > Plan > Cancel.\", \"citations\": [\"B-01\"]}",
+    "g13": "{\"answer\": \"Great choice! Turn on TOTP 2FA under Account > Security.\", \"citations\": [\"A-09\"]}",
+    "g14": "{\"answer\": \"Good question! All provisioned seats are billed monthly, even if nobody logs in.\", \"citations\": [\"B-14\"]}",
+    "g15": "{\"answer\": \"Yes! Just open a support ticket and the team will handle the cross-region migration for you.\", \"citations\": [\"M-03\"]}",
+    "g16": "{\"answer\": \"Yes, every payload is signed with HMAC-SHA256 in the X-Signature header, so you can trust it!\", \"citations\": [\"W-04\"]}",
+    "g17": "{\"answer\": \"Yes! SCIM 2.0 user provisioning comes with Enterprise plans.\", \"citations\": [\"A-21\"]}",
+    "g18": "{\"answer\": \"No worries! Deleted workspaces are kept for 30 days before they are permanently purged.\", \"citations\": [\"R-08\"]}",
+    "g19": "{\"answer\": \"Absolutely! Enterprise customers can run an on-premise edition, and our team will help you set it up.\", \"citations\": [\"H-02\"]}",
+    "g20": "{\"answer\": \"Great news! Students get 50% off any plan with a valid university email.\", \"citations\": [\"P-05\"]}"
+  }
+}

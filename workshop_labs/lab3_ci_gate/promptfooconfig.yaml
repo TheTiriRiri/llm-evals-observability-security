@@ -12,26 +12,41 @@ providers:
       temperature: 0
 
 # One test per row of the same Golden Dataset the pytest gate uses
-# (columns become vars: query, context, must_contain, expected_citation).
+# (vars: id, query, context, slice, must_contain, expected_citation).
 tests: file://golden_dataset.jsonl
 
 defaultTest:
   assert:
-    # Schema: valid JSON (a fenced ```json block is extracted, same rule as test_ci_gate.py),
-    # non-empty answer, and the expected policy ID among the citations.
+    # Deterministic, same rules as score_row() in test_ci_gate.py:
+    # valid JSON (a fenced ```json block is extracted), only cite IDs that are in the context,
+    # answerable rows need the expected fact + citation, not_covered rows must abstain.
     - type: javascript
-      metric: schema_and_citation
+      metric: deterministic
       value: |
         const fenced = output.match(/```(?:json)?\s*\n([\s\S]*?)```/);
         const text = fenced ? fenced[1] : output.trim();
         let parsed;
         try { parsed = JSON.parse(text); } catch (e) { return { pass: false, score: 0, reason: "invalid JSON" }; }
-        const ok = typeof parsed.answer === "string" && parsed.answer.length > 0
-          && Array.isArray(parsed.citations) && parsed.citations.includes(context.vars.expected_citation);
-        return { pass: ok, score: ok ? 1 : 0, reason: ok ? "ok" : "missing answer or expected citation" };
-    - type: icontains
-      metric: must_contain
-      value: "{{must_contain}}"
+        if (typeof parsed.answer !== "string" || !parsed.answer || !Array.isArray(parsed.citations)) {
+          return { pass: false, score: 0, reason: "schema: needs answer (string) and citations (list)" };
+        }
+        const known = new Set([...context.vars.context.matchAll(/\[([A-Z]+-\d+)\]/g)].map((m) => m[1]));
+        if (!parsed.citations.every((c) => known.has(c))) {
+          return { pass: false, score: 0, reason: "cites an ID that is not in the context" };
+        }
+        const abstains = /\b(?:doesn't|does not|don't|do not)\s+(?:say|state|mention|cover|specify|name)\b|\bnot\s+(?:covered|mentioned|specified|documented)\b/i.test(parsed.answer);
+        if (context.vars.slice === "not_covered") {
+          return abstains
+            ? { pass: true, score: 1, reason: "abstained" }
+            : { pass: false, score: 0, reason: "answered a question the context does not cover" };
+        }
+        const ok = parsed.answer.toLowerCase().includes(String(context.vars.must_contain).toLowerCase())
+          && parsed.citations.includes(context.vars.expected_citation);
+        return { pass: ok, score: ok ? 1 : 0, reason: ok ? "ok" : "missing the expected fact or citation" };
+    # Semantic check by promptfoo's default grader. It is NOT the judge you calibrated in Lab 1:
+    # treat its failures as leads to read. The calibrated judge runs in pytest with LIVE_EVAL=1.
     - type: llm-rubric
       metric: faithfulness
-      value: "Every factual claim in the answer is supported by this context: {{context}}"
+      value: >-
+        Every factual claim in the answer is supported by this context: {{context}}.
+        An answer that says the documentation does not cover the question is acceptable.
