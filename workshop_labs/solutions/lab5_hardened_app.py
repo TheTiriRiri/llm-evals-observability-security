@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import re
-from functools import lru_cache
 from urllib.parse import urlsplit
 
 from lab5_attack_and_harden.vulnerable_app import (
     EMAIL_OUTBOX,
     Principal,
     demo,
+    neutralize_placeholders,
+    presidio_engines,
     rehydrate,
     resolve_principal,
     similarity_search,
@@ -25,32 +26,6 @@ SINGLE_EMAIL = re.compile(r"[a-z0-9._%+-]+@([a-z0-9-]+(?:\.[a-z0-9-]+)+)")
 # Markdown image / link with an absolute or protocol-relative URL, any letter case (HTTPS://, //host/...).
 MD_IMAGE = re.compile(r"!\[[^\]]*\]\(\s*((?:[a-z][a-z0-9+.-]*:)?//[^)\s]*)[^)]*\)", re.IGNORECASE)
 MD_LINK = re.compile(r"\[([^\]]*)\]\(\s*((?:[a-z][a-z0-9+.-]*:)?//[^)\s]*)[^)]*\)", re.IGNORECASE)
-SPACY_MODEL = "en_core_web_sm"
-
-
-@lru_cache(maxsize=1)
-def _presidio_engines():
-    """Build Presidio engines once per process.
-
-    Loading the spaCy model takes seconds, so never create AnalyzerEngine() per request.
-    The model is pinned explicitly: Presidio's default config wants `en_core_web_lg`
-    and silently downloads it (~400 MB) when missing.
-    """
-    import spacy
-    from presidio_analyzer import AnalyzerEngine
-    from presidio_analyzer.nlp_engine import NlpEngineProvider
-    from presidio_anonymizer import AnonymizerEngine
-
-    if not spacy.util.is_package(SPACY_MODEL):
-        raise RuntimeError(f"spaCy model '{SPACY_MODEL}' is missing. Run: python -m spacy download {SPACY_MODEL}")
-
-    nlp_engine = NlpEngineProvider(
-        nlp_configuration={
-            "nlp_engine_name": "spacy",
-            "models": [{"lang_code": "en", "model_name": SPACY_MODEL}],
-        }
-    ).create_engine()
-    return AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=["en"]), AnonymizerEngine()
 
 
 def retrieve_docs(query: str, principal: Principal) -> list[dict]:
@@ -74,7 +49,8 @@ def redact_pii(text: str, mapping: dict[str, str] | None = None) -> tuple[str, d
     from presidio_anonymizer.entities import OperatorConfig
 
     mapping = {} if mapping is None else mapping
-    analyzer, anonymizer = _presidio_engines()
+    analyzer, anonymizer = presidio_engines()
+    text = neutralize_placeholders(text)  # a planted "<US_SSN_1>" must not collide with a real token
 
     def tokenizer(entity: str):
         def to_token(original: str) -> str:
@@ -138,7 +114,7 @@ def hardened_handle_request(session_token: str, user_query: str) -> str:
         except (PermissionError, ValueError) as exc:
             print(f"  [tool blocked] {exc}")
 
-    # Sanitize first, then re-hydrate: never put real values back into URLs the client will fetch.
+    # Sanitize first, then re-hydrate; rehydrate() never puts a real value into a URL.
     return rehydrate(sanitize_markdown(raw_answer), mapping)
 
 

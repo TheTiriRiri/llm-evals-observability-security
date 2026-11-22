@@ -12,16 +12,16 @@
 
 | Sesja | Blok | Czas | Zawartość |
 | :--- | :--- | :--- | :--- |
-| **Dzień 1** | Moduł 1.1 + Lab 1 | 75 min | Otwarcie, dlaczego tradycyjne testowanie zawodzi, Golden Datasets, analiza błędów i LLM-as-a-Judge |
+| **Dzień 1** | Część 1.1 + Lab 1 | 75 min | Otwarcie, dlaczego tradycyjne testowanie zawodzi, Golden Datasets, analiza błędów i LLM-as-a-Judge |
 | | *Przerwa* | 15 min | — |
-| | Moduł 1.2 + Lab 2 | 60 min | Obserwowalność, tracing w Langfuse / OpenTelemetry i przegląd platform |
-| | Moduł 1.3 + Lab 3 | 60 min | Produkcyjne pętle ewaluacji i bramki CI/CD (`promptfoo` + `pytest`) |
-| **Dzień 2** | Moduł 2.1 + Lab 4 | 45 min | Podsumowanie dnia 1, powierzchnia ataku AI i modelowanie zagrożeń dla systemów agentowych |
-| | Moduł 2.2 + Lab 5 | 75 min | Prompt injection, halucynacje i ochrona danych osobowych (`presidio`) |
+| | Część 1.2 + Lab 2 | 60 min | Obserwowalność, tracing w Langfuse / OpenTelemetry i przegląd platform |
+| | Część 1.3 + Lab 3 | 60 min | Produkcyjne pętle ewaluacji i bramki CI/CD (`promptfoo` + `pytest`) |
+| **Dzień 2** | Część 2.1 + Lab 4 | 45 min | Podsumowanie dnia 1, powierzchnia ataku AI i modelowanie zagrożeń dla systemów agentowych |
+| | Część 2.2 + Lab 5 | 75 min | Prompt injection, halucynacje i ochrona danych osobowych (`presidio`) |
 | | *Przerwa* | 15 min | — |
-| | Moduł 2.3 + Lab 6 | 75 min | Guardrails w czasie działania, automatyczny red teaming i governance produkcyjny |
+| | Część 2.3 + Lab 6 | 75 min | Guardrails w czasie działania, automatyczny red teaming i governance produkcyjny |
 
-5-minutowe otwarcie każdego dnia jest częścią jego pierwszego bloku. Moduł 2.3 dzieli się na 25 min wykładu, 30 min Labu 6 i 20 min governance oraz podsumowania.
+5-minutowe otwarcie każdego dnia jest częścią jego pierwszego bloku. Część 2.3 dzieli się na 25 min wykładu, 30 min Labu 6 i 20 min governance oraz podsumowania.
 
 Tematy, które nie mieszczą się w 7 godzinach (ewaluacja agentów, projektowanie agentów odpornych na injection, bezpieczeństwo MCP, RODO), omawia [dodatek do samodzielnej nauki](./appendix_take_home-pl.md).
 
@@ -240,7 +240,7 @@ flowchart LR
 3. **Prywatność danych, ochrona PII i bezpieczne przetwarzanie danych**
    - *Redakcja / pseudonimizacja przed wywołaniem LLM:* Wykrywaj i maskuj PII/sekrety (np. Microsoft Presidio, regex + NER) *przed* wysłaniem do zewnętrznych API modeli.
      - Używaj numerowanych placeholderów (`<PERSON_1>`), żeby model nadal odróżniał osoby.
-     - Przywracaj wartości (re-hydracja) lokalnie, po sanityzacji wyjścia, żeby prawdziwe dane nigdy nie trafiły do URL-i.
+     - Przywracaj wartości (re-hydracja) lokalnie, po sanityzacji wyjścia, a placeholdery wewnątrz URL-i zostawiaj zredagowane: klient pobiera nawet URL z allowlisty.
      - Presidio to NER „na tyle, na ile się da”: zmierz jego recall na własnych danych i dodaj rozpoznawacze dla swojego kraju (ma np. rozpoznawacz polskiego numeru PESEL).
    - *Higiena obserwowalności:* Usuwaj PII/klucze API z logów trace'ów i datasetów ewaluacyjnych; egzekwuj okresy retencji (TTL).
    - *Autoryzacja w RAG (ACL na poziomie dokumentów):* Nigdy nie polegaj na prompcie LLM („pokazuj tylko dokumenty Alicji”) jako mechanizmie kontroli dostępu.
@@ -300,7 +300,7 @@ flowchart LR
    - Inwentaryzacja modeli i promptów (jakie modele, jakie dane trafiają dokąd, status ZDR, które serwery MCP i definicje narzędzi).
    - Playbook reagowania na incydenty: kill switche (wyłączenie narzędzia/feature flagi), rollback promptu, fallback na innego dostawcę i bezpieczne stany awaryjne widoczne dla użytkownika.
    - **EU AI Act po Digital Omnibus** (rozporządzenie (UE) 2026/1744, obowiązuje od 27 lipca 2026):
-     - Obowiązki przejrzystości z art. 50 stosuje się od 2 sierpnia 2026: informuj ludzi, że rozmawiają z AI, i oznaczaj treści syntetyczne.
+     - Obowiązki przejrzystości z art. 50 stosuje się od 2 sierpnia 2026. Zespół, który sam buduje bota i udostępnia go pod własną nazwą, jest zwykle jego dostawcą, a nie tylko podmiotem stosującym: informuj ludzi, że rozmawiają z AI, i oznaczaj treści syntetyczne (wyjątki i kodeksy praktyk: zob. dodatek).
      - Obowiązki dla systemów wysokiego ryzyka przesunięto na 2 grudnia 2027 (załącznik III) i 2 sierpnia 2028 (załącznik I).
      - Art. 4 wymaga teraz od dostawców i podmiotów stosujących podejmowania działań wspierających kompetencje w zakresie AI (AI literacy).
    - **RODO:** DPIA dla przetwarzania wysokiego ryzyka, minimalizacja danych i retencja w trace'ach, umowy powierzenia z dostawcami modeli i ścieżka usuwania danych, obejmująca też datasety ewaluacyjne.
@@ -324,7 +324,7 @@ flowchart LR
 - [ ] **Analiza błędów:** Udokumentowana taksonomia zaobserwowanych błędów przypisana do zautomatyzowanych ewaluatorów.
 - [ ] **Skalibrowani sędziowie:** Prompty LLM-as-a-Judge zweryfikowane względem etykiet ludzkich, osobno dla każdego trybu awarii i z przedziałami (śledzone precision/recall).
 - [ ] **Pełny tracing:** Każde żądanie śledzone end-to-end (wyszukiwanie, prompty, narzędzia, koszt, opóźnienie) z dołączonymi wersjami promptu/modelu.
-- [ ] **Bramka ewaluacji w CI/CD:** Zautomatyzowany zestaw testów regresyjnych uruchamiany przy zmianach promptów/modeli/wyszukiwania przed merge'em. Porównuje baseline i kandydata w każdym wycinku i kończy się porażką dla promptów, których nikt nie ewaluował.
+- [ ] **Bramka ewaluacji w CI/CD:** Zautomatyzowany zestaw testów regresyjnych uruchamiany przy zmianach promptów/modeli/wyszukiwania przed merge'em. Porównuje baseline i kandydata w każdym wycinku i kończy się porażką dla promptów, których nikt nie ewaluował. Zmiany w wyszukiwaniu są oceniane z wyszukiwaniem w pętli (np. recall@k na oznaczonych zapytaniach), bo zamrożone konteksty testują tylko generator.
 - [ ] **Bezpieczne wdrożenia:** Kanarki oceniane przez sędziów, a nie tylko przez wskaźniki błędów; przebiegi shadow z atrapami wszystkich efektów ubocznych.
 - [ ] **Autoryzacja w wyszukiwaniu i narzędziach:** ACL egzekwowane w warstwie danych i wrapperach narzędzi — nigdy w prompcie.
   - Tożsamość pochodzi ze zweryfikowanej sesji.

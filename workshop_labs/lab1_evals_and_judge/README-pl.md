@@ -25,6 +25,9 @@
 # Offline: testy deterministyczne + prymitywny numeryczny zamiennik sędziego (bez kosztów API)
 python lab1_evals_and_judge/judge_starter.py --mock
 
+# Przeczytaj jeden trace w całości, zanim go oznaczysz albo zaczniesz spór z sędzią
+python lab1_evals_and_judge/judge_starter.py --show t07
+
 # Na żywo (OPENAI_API_KEY z .env): najpierw rubryka 1-5, potem Twój sędzia binarny, oba na dev
 python lab1_evals_and_judge/judge_starter.py --judge likert
 python lab1_evals_and_judge/judge_starter.py

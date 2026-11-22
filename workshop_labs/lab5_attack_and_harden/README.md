@@ -12,7 +12,7 @@
 ## Part B: Defend (25 min)
 Complete the `TODO (Lab 5)` functions in `vulnerable_app.py`. Do not change the request flow (`handle_request`).
 1. **Tenant and clearance filters in retrieval** (`retrieve_docs`), based on the `Principal` from the verified session, never on values from the request or the model.
-2. **PII redaction with Microsoft Presidio** (`redact_pii`), with numbered placeholders (`<PERSON_1>`) and a mapping, so the answer can be re-hydrated locally for the user who is allowed to see it.
+2. **PII redaction with Microsoft Presidio** (`redact_pii`), with numbered placeholders (`<PERSON_1>`) and a mapping, so the answer can be re-hydrated locally for the user who is allowed to see it. `presidio_engines()` already builds the engines. Run `neutralize_placeholders()` on the text first, so a document planted with `<US_SSN_1>` cannot collide with a real token.
 3. **Deterministic tool authorization** (`send_email_tool`): a role check on the principal plus a recipient domain allowlist.
 4. **Output sanitization** (`sanitize_markdown`): remove external images and neutralize links to hosts that are not on an allowlist.
 
@@ -21,7 +21,7 @@ Reference solution: `python -m solutions.lab5_hardened_app`.
 ## Notes for the Debrief
 - The simulated model follows the injection in both versions. The hardened app does not try to make the model behave; it limits what a compromised model can reach and do.
 - Hana may read salaries, so the ACL lets the HR document through, and her role may send e-mail. Only the recipient allowlist stops the exfiltration. One layer is never enough.
-- **Redaction vs. authorized use:** the HR document is redacted before the external model sees it, then re-hydrated locally for Hana. Re-hydration runs after sanitization, so real values never end up in URLs. Decide per data class whether redaction is required, or whether a model vendor under zero data retention and a DPA is acceptable.
+- **Redaction vs. authorized use:** the HR document is redacted before the external model sees it, then re-hydrated locally for Hana. Sanitization runs first, and `rehydrate()` turns a placeholder inside a URL into `REDACTED`. Order alone is not enough: sanitization keeps allowlisted URLs, placeholder included, and the client fetches them. Decide per data class whether redaction is required, or whether a model vendor under zero data retention and a DPA is acceptable.
 - **Presidio is best-effort NER, not a guarantee.** Measure its recall on your own data, the way Day 1 measures a judge, and add recognizers for your locale. For example, Presidio ships a `PL_PESEL` recognizer that this English pipeline does not load.
 - The toy index filters after the search. A real vector DB must apply tenant and ACL filters inside the query; otherwise top-k fills up with documents the caller may not see.
 - In a client you do not control, such as Slack, there is no CSP to set: disable link unfurling when posting and sanitize the text.

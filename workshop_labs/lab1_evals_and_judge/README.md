@@ -25,6 +25,9 @@
 # Offline: deterministic checks + a crude numeric stand-in for the judge (no API cost)
 python lab1_evals_and_judge/judge_starter.py --mock
 
+# Read one trace in full before you label it or argue with the judge
+python lab1_evals_and_judge/judge_starter.py --show t07
+
 # Live (OPENAI_API_KEY from .env): the 1-5 baseline, then your binary judge, both on dev
 python lab1_evals_and_judge/judge_starter.py --judge likert
 python lab1_evals_and_judge/judge_starter.py

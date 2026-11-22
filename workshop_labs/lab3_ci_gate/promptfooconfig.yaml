@@ -19,7 +19,7 @@ defaultTest:
   assert:
     # Deterministic, same rules as score_row() in test_ci_gate.py:
     # valid JSON (a fenced ```json block is extracted), only cite IDs that are in the context,
-    # answerable rows need the expected fact + citation, not_covered rows must abstain.
+    # answerable rows need the expected fact + citation, not_covered rows must abstain and cite nothing.
     - type: javascript
       metric: deterministic
       value: |
@@ -36,7 +36,7 @@ defaultTest:
         }
         const abstains = /\b(?:doesn't|does not|don't|do not)\s+(?:say|state|mention|cover|specify|name)\b|\bnot\s+(?:covered|mentioned|specified|documented)\b/i.test(parsed.answer);
         if (context.vars.slice === "not_covered") {
-          return abstains
+          return abstains && parsed.citations.length === 0
             ? { pass: true, score: 1, reason: "abstained" }
             : { pass: false, score: 0, reason: "answered a question the context does not cover" };
         }

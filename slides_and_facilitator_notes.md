@@ -221,7 +221,7 @@
 
 - **Slide 23: Data Privacy, PII & RAG Access Control**
   - *Bullets:*
-    - **Pre-LLM Redaction (Microsoft Presidio):** Detect and mask PII/secrets with numbered placeholders (`<PERSON_1>`, `<EMAIL_ADDRESS_1>`) *before* calling external model APIs. Re-hydrate locally, after output sanitization, so real values never land in a URL.
+    - **Pre-LLM Redaction (Microsoft Presidio):** Detect and mask PII/secrets with numbered placeholders (`<PERSON_1>`, `<EMAIL_ADDRESS_1>`) *before* calling external model APIs. Re-hydrate locally, after output sanitization, and never into a URL: the client fetches even allowlisted URLs.
     - **Observability Hygiene:** Scrub PII/tokens before sending spans to Langfuse/OTel; set retention TTLs.
     - **Vector DB ACLs:** Enforce tenant/user permissions as mandatory metadata filters *inside* the retrieval query—never in the system prompt. The identity comes from the verified session, never from the request or the model.
     - **Vendor Controls:** Zero Data Retention (ZDR), no-training agreements, regional endpoints.
@@ -291,7 +291,7 @@
     - **Inventory & Data Flow:** Document models, ZDR status, data classification, and third-party MCP servers/tools (pinned tool definitions).
     - **Incident Response:** Feature-flag kill switches for tools, instant prompt rollback, provider fallback, and safe degraded responses.
     - **EU AI Act after the Digital Omnibus** (Regulation (EU) 2026/1744, in force since 27 July 2026):
-      - Article 50 transparency applies from 2 August 2026: disclose AI interaction, mark synthetic content.
+      - Article 50 transparency applies from 2 August 2026. Building your own bot usually makes you its provider: disclose AI interaction, mark synthetic content.
       - High-risk obligations move to 2 December 2027 (Annex III) and 2 August 2028 (Annex I).
       - Article 4 asks for measures that support AI literacy.
     - **GDPR & Audit:** DPIA where the risk is high, retention and a deletion path for traces and eval data, immutable logs of agentic tool calls, NIST AI RMF / ISO/IEC 42001.

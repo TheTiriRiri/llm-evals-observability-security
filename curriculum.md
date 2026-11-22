@@ -240,7 +240,7 @@ flowchart LR
 3. **Data Privacy, PII Protection & Secure Data Handling**
    - *Pre-LLM Redaction / Pseudonymization:* Detect and mask PII/secrets (e.g., Microsoft Presidio, regex + NER) *before* sending to third-party model APIs.
      - Use numbered placeholders (`<PERSON_1>`), so the model still tells people apart.
-     - Re-hydrate locally, after output sanitization, so real values never end up in URLs.
+     - Re-hydrate locally, after output sanitization, and keep placeholders inside URLs redacted: the client fetches even an allowlisted URL.
      - Presidio is best-effort NER: measure its recall on your data and add recognizers for your locale (it ships one for the Polish PESEL).
    - *Observability Hygiene:* Scrub PII/API keys from trace logs and eval datasets; enforce retention TTLs.
    - *RAG Authorization (Document-Level ACLs):* Never rely on the LLM prompt ("only show Alice's docs") for access control.
@@ -300,7 +300,7 @@ flowchart LR
    - Model & prompt inventory (what models, what data goes where, ZDR status, which MCP servers and tool definitions).
    - Incident response playbook: kill switches (disable tool/feature flag), prompt rollback, provider fallback, and user-facing safe failure states.
    - **EU AI Act after the Digital Omnibus** (Regulation (EU) 2026/1744, in force since 27 July 2026):
-     - The Article 50 transparency duties apply from 2 August 2026: tell people they are talking to an AI, and mark synthetic content.
+     - The Article 50 transparency duties apply from 2 August 2026. A team that builds its own bot and runs it under its own name is usually its provider, not only its deployer: tell people they are talking to an AI and mark synthetic output (exceptions and codes of practice: see the appendix).
      - High-risk obligations move to 2 December 2027 (Annex III) and 2 August 2028 (Annex I).
      - Article 4 now asks providers and deployers to take measures that support AI literacy.
    - **GDPR:** DPIA for high-risk processing, data minimization and retention in traces, processor agreements with model vendors, and a deletion path that also covers eval datasets.
@@ -324,7 +324,7 @@ flowchart LR
 - [ ] **Failure Analysis:** Documented taxonomy of observed failures mapped to automated evaluators.
 - [ ] **Calibrated Judges:** LLM-as-a-Judge prompts validated against human labels, per failure mode, with intervals (precision/recall tracked).
 - [ ] **Full-Stack Tracing:** Every request traced end-to-end (retrieval, prompts, tools, cost, latency) with prompt/model versions attached.
-- [ ] **CI/CD Eval Gate:** Automated regression suite runs on prompt/model/retrieval changes before merge. It compares baseline and candidate per slice and fails closed on unevaluated prompts.
+- [ ] **CI/CD Eval Gate:** Automated regression suite runs on prompt/model/retrieval changes before merge. It compares baseline and candidate per slice and fails closed on unevaluated prompts. Retrieval changes are scored with retrieval in the loop (e.g. recall@k on labeled queries), since frozen contexts test only the generator.
 - [ ] **Safe Rollouts:** Canaries scored by judges, not only by error rates; shadow runs stub every side effect.
 - [ ] **AuthZ in Retrieval & Tools:** ACLs enforced in the data layer and tool wrappers—never in the prompt.
   - Identity comes from the verified session.

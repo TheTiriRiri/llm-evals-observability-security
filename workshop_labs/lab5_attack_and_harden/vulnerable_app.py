@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 
 
 @dataclass(frozen=True)
@@ -90,20 +91,60 @@ def retrieve_docs(query: str, principal: Principal) -> list[dict]:
     return similarity_search(query)
 
 
+SPACY_MODEL = "en_core_web_sm"
+
+
+@lru_cache(maxsize=1)
+def presidio_engines():
+    """(AnalyzerEngine, AnonymizerEngine), built once per process.
+
+    Loading the spaCy model takes seconds, so never create AnalyzerEngine() per request.
+    The model is pinned explicitly: Presidio's default config wants `en_core_web_lg`
+    and silently downloads it (~400 MB) when missing.
+    """
+    import spacy
+    from presidio_analyzer import AnalyzerEngine
+    from presidio_analyzer.nlp_engine import NlpEngineProvider
+    from presidio_anonymizer import AnonymizerEngine
+
+    if not spacy.util.is_package(SPACY_MODEL):
+        raise RuntimeError(f"spaCy model '{SPACY_MODEL}' is missing. Run: python -m spacy download {SPACY_MODEL}")
+
+    nlp_engine = NlpEngineProvider(
+        nlp_configuration={
+            "nlp_engine_name": "spacy",
+            "models": [{"lang_code": "en", "model_name": SPACY_MODEL}],
+        }
+    ).create_engine()
+    return AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=["en"]), AnonymizerEngine()
+
+
+PLACEHOLDER = re.compile(r"<[A-Z][A-Z_]*_\d+>")
+# Absolute or protocol-relative URL, any letter case: https://..., HTTPS://..., //host/...
+URL = re.compile(r"(?:[a-z][a-z0-9+.-]*:)?//[^\s)\]]+", re.IGNORECASE)
+
+
+def neutralize_placeholders(text: str) -> str:
+    """Defuse text that already looks like a placeholder ("<US_SSN_1>" -> "US_SSN_1").
+
+    Otherwise a document planted with "<US_SSN_1>" collides with the token redaction gives the
+    real SSN, and re-hydration puts the real value wherever the model repeats the planted text.
+    """
+    return PLACEHOLDER.sub(lambda m: m.group(0)[1:-1], text)
+
+
 def redact_pii(text: str, mapping: dict[str, str] | None = None) -> tuple[str, dict[str, str]]:
     """VULNERABILITY 2: No PII redaction before the external LLM API or logs.
 
     Must return (redacted_text, mapping), where mapping is placeholder -> original value,
     so the answer can be re-hydrated locally for the user who is allowed to see it.
     """
-    # TODO (Lab 5): Use Microsoft Presidio (AnalyzerEngine + AnonymizerEngine) for EMAIL_ADDRESS,
-    #   PHONE_NUMBER, US_SSN and PERSON, with NUMBERED placeholders (<PERSON_1>, <EMAIL_ADDRESS_1>):
-    #   a plain "replace" turns every person into the same <PERSON> and the model loses who is who.
+    # TODO (Lab 5): Use Microsoft Presidio for EMAIL_ADDRESS, PHONE_NUMBER, US_SSN and PERSON, with NUMBERED
+    #   placeholders (<PERSON_1>, <EMAIL_ADDRESS_1>): a plain "replace" turns every person into the same
+    #   <PERSON> and the model loses who is who.
     # Hints:
-    #   - Build the engines ONCE (module level or a cached factory); loading spaCy per call costs seconds.
-    #   - Configure the model explicitly via presidio_analyzer.nlp_engine.NlpEngineProvider with
-    #     {"lang_code": "en", "model_name": "en_core_web_sm"}. A bare AnalyzerEngine() wants en_core_web_lg
-    #     and will try to download ~400 MB on first use.
+    #   - `analyzer, anonymizer = presidio_engines()` gives you engines that are built once, on en_core_web_sm.
+    #   - Run neutralize_placeholders(text) first, so text that already looks like a placeholder cannot collide.
     #   - Numbered tokens: one OperatorConfig("custom", {"lambda": fn}) per entity type, where fn(original)
     #     returns the existing token for a value it has seen before, or the next <ENTITY_n>, and records it in `mapping`.
     #   - Check what Presidio actually catches: its EmailRecognizer validates the TLD, so addresses on
@@ -112,10 +153,21 @@ def redact_pii(text: str, mapping: dict[str, str] | None = None) -> tuple[str, d
 
 
 def rehydrate(text: str, mapping: dict[str, str]) -> str:
-    """Put the original values back into text that is shown to the (authorized) user."""
-    for token, original in mapping.items():
-        text = text.replace(token, original)
-    return text
+    """Put the original values back into text that is shown to the (authorized) user.
+
+    One pass, so a restored value is never scanned again. A placeholder inside a URL becomes
+    REDACTED instead: the client fetches URLs, so a real value there leaves the browser even
+    when sanitize_markdown kept the URL because its host is on the allowlist.
+    """
+    url_spans = [m.span() for m in URL.finditer(text)]
+
+    def restore(m: re.Match) -> str:
+        token = m.group(0)
+        if token not in mapping:
+            return token
+        return "REDACTED" if any(start <= m.start() < end for start, end in url_spans) else mapping[token]
+
+    return PLACEHOLDER.sub(restore, text)
 
 
 def send_email_tool(to: str, body: str, principal: Principal) -> str:
@@ -181,7 +233,7 @@ def handle_request(session_token: str, user_query: str) -> str:
         except (PermissionError, ValueError) as exc:
             print(f"  [tool blocked] {exc}")
 
-    # Sanitize first, then re-hydrate: never put real values back into URLs the client will fetch.
+    # Sanitize first, then re-hydrate; rehydrate() never puts a real value into a URL.
     return rehydrate(sanitize_markdown(raw_answer), mapping)
 
 

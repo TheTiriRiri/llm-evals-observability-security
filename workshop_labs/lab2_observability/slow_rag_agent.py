@@ -12,6 +12,7 @@ import uuid
 from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Any, Callable, Iterator
 
 from dotenv import load_dotenv
@@ -78,7 +79,9 @@ def langfuse_configured() -> bool:
     return bool(public and secret) and not public.startswith("pk-lf-your") and not secret.startswith("sk-lf-your")
 
 
+@lru_cache(maxsize=1)
 def _langfuse():
+    """One client per process. The SDK batches spans in the background; flush_traces() sends the rest before exit."""
     from langfuse import Langfuse
 
     return Langfuse(mask=mask_pii)
@@ -97,9 +100,9 @@ class SpanHandle:
 class Tracer:
     """Records every span locally and, when Langfuse keys are set, as nested Langfuse observations.
 
-    Uses the OpenTelemetry-based Langfuse SDK (v5): one root observation per request,
-    child observations opened with `start_as_current_observation`, and an explicit
-    `flush()` so short-lived scripts do not exit before spans are exported.
+    Uses the OpenTelemetry-based Langfuse SDK (v5): one root observation per request and
+    child observations opened with `start_as_current_observation`. The runner calls
+    flush_traces() once at the end, so a short-lived script does not exit before spans are exported.
     """
 
     def __init__(self, user_id: str) -> None:
@@ -144,10 +147,9 @@ class Tracer:
     def span(self, name: str, as_type: str = "span", **attrs: Any) -> Iterator[SpanHandle]:
         """Time one step. Add attributes during the step with `handle.set(key=value)`.
 
-        For `as_type="generation"`, set the OpenTelemetry GenAI attributes `gen_ai.request.model`,
-        `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens` (plus `ttft_ms` if you have it).
-        This tracer copies them into Langfuse's model / usage / completion-start fields itself, so
-        Langfuse can compute cost and time to first token.
+        For `as_type="generation"`, set the OpenTelemetry GenAI attributes from genai_attributes()
+        (plus `ttft_ms` if you have it). This tracer copies the model, the token usage and the time
+        to first token into Langfuse's own fields, so Langfuse can compute cost and TTFT.
         """
         handle = SpanHandle(dict(attrs))
         started_at = datetime.now(timezone.utc)
@@ -161,8 +163,10 @@ class Tracer:
             if obs is not None:
                 extra: dict[str, Any] = {}
                 if as_type == "generation":
-                    if "gen_ai.request.model" in handle.attrs:
-                        extra["model"] = handle.attrs["gen_ai.request.model"]
+                    # Cost follows the model that answered (response), which can differ from the one requested.
+                    model = handle.attrs.get("gen_ai.response.model") or handle.attrs.get("gen_ai.request.model")
+                    if model:
+                        extra["model"] = model
                     usage = {key: int(handle.attrs[attr]) for key, attr in
                              (("input", "gen_ai.usage.input_tokens"), ("output", "gen_ai.usage.output_tokens"))
                              if attr in handle.attrs}
@@ -178,7 +182,6 @@ class Tracer:
         if dump:
             self.collector.dump()
         if self._lf is not None:
-            self._lf.flush()
             if dump:
                 try:
                     print(f"Langfuse trace: {self._lf.get_trace_url(trace_id=self.trace_id)}")
@@ -193,10 +196,30 @@ def record_feedback(trace_id: str, name: str, value: float) -> None:
     Your API must return the trace ID to the client for this to work.
     """
     if langfuse_configured():
-        lf = _langfuse()
-        lf.create_score(trace_id=trace_id, name=name, value=value)
-        lf.flush()
+        _langfuse().create_score(trace_id=trace_id, name=name, value=value)
     print(json.dumps({"feedback": {"trace_id": trace_id, "name": name, "value": value}}))
+
+
+def flush_traces() -> None:
+    """Send what the SDK still buffers. Once per process, before exit: a flush per request blocks on the network."""
+    if langfuse_configured():
+        _langfuse().flush()
+
+
+def genai_attributes(input_tokens: int, output_tokens: int) -> dict[str, Any]:
+    """OpenTelemetry GenAI attributes for one chat call. operation.name and provider.name are required.
+
+    The simulated calls answer with the requested model; with a real client, take
+    gen_ai.response.model from the response (e.g. resp.model), which names the exact snapshot.
+    """
+    return {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": MODEL_NAME,
+        "gen_ai.response.model": MODEL_NAME,
+        "gen_ai.usage.input_tokens": input_tokens,
+        "gen_ai.usage.output_tokens": output_tokens,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -282,8 +305,7 @@ def run_agent(user_id: str, query: str, request_no: int = 0) -> tuple[str, Trace
         # Step 1: Query rewrite (small LLM call)
         with tracer.span("query_rewrite", as_type="generation") as span:
             search_query, in_tok, out_tok = rewrite_query(query)
-            span.set(**{"gen_ai.request.model": MODEL_NAME, "gen_ai.usage.input_tokens": in_tok,
-                        "gen_ai.usage.output_tokens": out_tok})
+            span.set(**genai_attributes(in_tok, out_tok))
 
         # Step 2: Retrieval
         with tracer.span("vector_retrieval", as_type="retriever") as span:
@@ -307,8 +329,7 @@ def run_agent(user_id: str, query: str, request_no: int = 0) -> tuple[str, Trace
         # Step 4: LLM Synthesis
         with tracer.span("llm_synthesis", as_type="generation") as span:
             answer, in_tok, out_tok, ttft_ms = synthesize_answer(query, docs, tier, status)
-            span.set(**{"gen_ai.request.model": MODEL_NAME, "gen_ai.usage.input_tokens": in_tok,
-                        "gen_ai.usage.output_tokens": out_tok}, ttft_ms=ttft_ms)
+            span.set(**genai_attributes(in_tok, out_tok), ttft_ms=ttft_ms)
             # TODO (Lab 2): Attach prompt_version and user_tier to this span!
 
     return answer, tracer
@@ -347,6 +368,7 @@ def main(
         for span in tracer.collector.spans:
             durations.setdefault(span.name, []).append(span.duration_ms)
         durations.setdefault("TOTAL (request)", []).append(tracer.collector.total_ms)
+    flush_traces()
 
     if args.requests > 1:
         print(f"\n{'step':<28}{'P50 ms':>10}{'P95 ms':>10}{'max ms':>10}   (n={args.requests})")

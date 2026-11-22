@@ -31,11 +31,11 @@ promptfoo eval --env-file ../.env
 promptfoo view
 ```
 
-`test_candidate_no_slice_regression` is expected to fail until you fix the candidate. The live faithfulness test is skipped unless `LIVE_EVAL=1`.
+`test_candidate_no_slice_regression` is expected to fail until you fix the candidate. The live faithfulness test is skipped unless `LIVE_EVAL=1`. `test_gate_scoring.py` tests the gate's own scoring rules and always passes.
 
 ## How the gate works
-- **Dataset.** `golden_dataset.jsonl` has 20 rows in promptfoo's test-case format: 18 `answerable` (the expected fact and citation must appear) and 2 `not_covered` (the context does not answer the question; the assistant must say so instead of guessing). `pytest` and `promptfoo` read the same file and render the prompts the same way.
-- **Rules.** Schema validity 100%; overall pass rate ≥ 90%; and, as a paired comparison on the same inputs, no slice may drop more than 5 points below the baseline. Deterministic checks run everywhere; semantic faithfulness needs a live judge.
+- **Dataset.** `golden_dataset.jsonl` has 20 rows in promptfoo's test-case format: 18 `answerable` (the expected fact and citation must appear) and 2 `not_covered` (the context does not answer the question; the assistant must say so instead of guessing). `pytest` and `promptfoo` read the same file and render the prompts the same way. Each row carries a frozen `context`, so the gate tests the generator only: a change to retrieval (chunking, embeddings, top-k) needs an eval with retrieval in the loop.
+- **Rules.** Schema validity 100%; overall pass rate ≥ 90%; and, as a paired comparison on the same inputs, no slice may drop more than 5 points below the baseline. Deterministic checks run everywhere; semantic faithfulness needs a live judge and is computed over the answers with a valid schema. A `not_covered` row passes only with an abstention phrase and an empty `citations` list. The phrase check is a short regex shared with Lab 1, so a new paraphrase ("does not contain", "couldn't find") shows up as a false failure: read the flipped cases before you widen it.
 - **Fixtures.** Offline, the gate replays `fixtures/<prompt>.json`, keyed by the SHA-256 of the prompt file. The shipped fixtures are hand-written examples of how a model typically answers each prompt, so the lab runs without an API key; they are not recordings. `RECORD_FIXTURES=1` replaces them with real outputs. A prompt without a matching fixture fails: a gate must never pass a prompt nobody evaluated.
 - **Small slices.** 0/2 vs 2/2 is enough to block the merge, but a 2-row slice has a 95% interval of 34–100% even when everything passes. In a real gate, give each critical slice (abstention, safety, high-value intents) enough rows to mean something, and run the full set nightly.
 - **promptfoo's grader** (`llm-rubric`) is an uncalibrated LLM judge. Read its failures as leads; the judge you calibrated in Lab 1 is the one the pytest gate uses.

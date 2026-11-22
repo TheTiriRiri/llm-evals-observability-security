@@ -221,7 +221,7 @@
 
 - **Slajd 23: Prywatność danych, PII i kontrola dostępu w RAG**
   - *Punkty:*
-    - **Redakcja przed wywołaniem LLM (Microsoft Presidio):** Wykrywaj i maskuj PII/sekrety numerowanymi placeholderami (`<PERSON_1>`, `<EMAIL_ADDRESS_1>`) *przed* wywołaniem zewnętrznych API modeli. Przywracaj dane lokalnie, po sanityzacji wyjścia, żeby prawdziwe wartości nigdy nie trafiły do URL-a.
+    - **Redakcja przed wywołaniem LLM (Microsoft Presidio):** Wykrywaj i maskuj PII/sekrety numerowanymi placeholderami (`<PERSON_1>`, `<EMAIL_ADDRESS_1>`) *przed* wywołaniem zewnętrznych API modeli. Przywracaj dane lokalnie, po sanityzacji wyjścia, i nigdy do URL-a: klient pobiera nawet URL-e z allowlisty.
     - **Higiena obserwowalności:** Usuwaj PII/tokeny przed wysłaniem spanów do Langfuse/OTel; ustaw okresy retencji (TTL).
     - **ACL w bazach wektorowych:** Egzekwuj uprawnienia tenanta/użytkownika jako obowiązkowe filtry metadanych *wewnątrz* zapytania wyszukującego — nigdy w prompcie systemowym. Tożsamość pochodzi ze zweryfikowanej sesji, nigdy z żądania ani od modelu.
     - **Kontrole po stronie dostawcy:** Zero Data Retention (ZDR), umowy wykluczające trenowanie na danych, endpointy regionalne.
@@ -291,7 +291,7 @@
     - **Inwentaryzacja i przepływ danych:** Udokumentuj modele, status ZDR, klasyfikację danych oraz zewnętrzne serwery MCP/narzędzia (przypięte definicje narzędzi).
     - **Reagowanie na incydenty:** Kill switche dla narzędzi oparte na feature flagach, natychmiastowy rollback promptu, fallback na innego dostawcę i bezpieczne odpowiedzi w trybie degradacji.
     - **EU AI Act po Digital Omnibus** (rozporządzenie (UE) 2026/1744, obowiązuje od 27 lipca 2026):
-      - Przejrzystość z art. 50 obowiązuje od 2 sierpnia 2026: ujawnij interakcję z AI, oznaczaj treści syntetyczne.
+      - Przejrzystość z art. 50 obowiązuje od 2 sierpnia 2026. Własny bot zwykle czyni cię jego dostawcą: ujawnij interakcję z AI, oznaczaj treści syntetyczne.
       - Obowiązki dla systemów wysokiego ryzyka przesunięto na 2 grudnia 2027 (załącznik III) i 2 sierpnia 2028 (załącznik I).
       - Art. 4 wymaga działań wspierających kompetencje w zakresie AI.
     - **RODO i audyt:** DPIA tam, gdzie ryzyko jest wysokie, retencja i ścieżka usuwania danych z trace'ów i danych ewaluacyjnych, niezmienialne logi wywołań narzędzi przez agentów, NIST AI RMF / ISO/IEC 42001.

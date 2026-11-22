@@ -85,6 +85,7 @@ Model Context Protocol sprawia, że każdy serwer narzędzi staje się części�
 - Klienci wysyłają parametr `resource` (RFC 8707), żeby przywiązać tokeny do jednego serwera MCP.
 - Serwery sprawdzają, czy token został wydany dla nich.
 - Wytyczne bezpieczeństwa specyfikacji wprost zakazują token passthrough, czyli przekazywania przez serwer otrzymanego tokenu do innej usługi.
+- Te reguły dotyczą transportów HTTP. Lokalny serwer na stdio ich nie stosuje: bierze dane uwierzytelniające ze swojego środowiska, więc ogranicz je jak każdy inny sekret na tej maszynie.
 
 **Lista kontrolna:**
 - Przypinaj definicje narzędzi po hashu i przeglądaj diff przy każdej zmianie.
@@ -128,14 +129,16 @@ Prompty, trace'y, pobrane dokumenty i zbiory ewaluacyjne zawierające dane osobo
 | 2 lutego 2025 | Praktyki zakazane i kompetencje w zakresie AI (art. 4), z pierwotnego harmonogramu |
 | 2 sierpnia 2025 | Obowiązki dla modeli AI ogólnego przeznaczenia, z pierwotnego harmonogramu |
 | 2 sierpnia 2026 | Obowiązki przejrzystości (art. 50): nieprzesunięte |
-| 2 grudnia 2026 | Koniec okresu przejściowego na oznaczanie treści syntetycznych w systemach już wprowadzonych do obrotu **(do weryfikacji: źródła się różnią)**; dwa nowe zakazy: generowanie intymnych obrazów bez zgody i materiałów przedstawiających seksualne wykorzystywanie dzieci **(do weryfikacji)** |
+| 2 grudnia 2026 | Oznaczanie w formacie do odczytu maszynowego (art. 50 ust. 2) w systemach generatywnych wprowadzonych do obrotu przed 2 sierpnia 2026; dwa nowe zakazy (art. 5 ust. 1): systemy AI generujące intymne obrazy bez zgody albo materiały przedstawiające seksualne wykorzystywanie dzieci [13] |
 | 2 grudnia 2027 | Obowiązki dla systemów wysokiego ryzyka z załącznika III (przesunięte z 2 sierpnia 2026) |
 | 2 sierpnia 2028 | Obowiązki dla systemów wysokiego ryzyka w produktach z załącznika I (przesunięte z 2 sierpnia 2027) |
 
-- **Art. 4 (kompetencje w zakresie AI)** [15] **(do weryfikacji w EUR-Lex)**: Dostawcy i podmioty stosujące musieli podejmować środki w celu zapewnienia, w możliwie największym stopniu, odpowiedniego poziomu kompetencji w zakresie AI. Według nowego brzmienia mają podejmować środki wspierające rozwój tych kompetencji, bez obowiązku gwarantowania poziomu poszczególnych osób.
+- **Art. 4 (kompetencje w zakresie AI)** [13][15]: Dostawcy i podmioty stosujące musieli podejmować środki w celu zapewnienia, w możliwie największym stopniu, odpowiedniego poziomu kompetencji w zakresie AI. Według nowego brzmienia mają podejmować środki wspierające rozwój tych kompetencji, bez obowiązku gwarantowania poziomu poszczególnych osób.
 - **Art. 50 dla systemów z tego warsztatu:**
-  - Bot obsługi klienta musi informować ludzi, że rozmawiają z AI, chyba że to oczywiste.
-  - Systemy generatywne muszą oznaczać treści syntetyczne w formacie nadającym się do odczytu maszynowego.
+  - **Kto jest kim.** Zespół, który sam rozwija bota obsługi klienta i oddaje go do użytku pod własną nazwą, także na własny użytek, jest zwykle jego dostawcą (art. 3 pkt 3 i 11 rozporządzenia (UE) 2024/1689), a nie tylko podmiotem stosującym. Obowiązki dostawcy spadają wtedy na ten zespół.
+  - **Dostawcy:** ludzie muszą wiedzieć, że rozmawiają z AI, chyba że to oczywiste (art. 50 ust. 1). Systemy generatywne muszą oznaczać swoje wyniki w formacie nadającym się do odczytu maszynowego, o ile jest to technicznie wykonalne (art. 50 ust. 2). Nie dotyczy to funkcji wspomagających standardową edycję, które nie zmieniają istotnie danych wejściowych.
+  - **Podmioty stosujące:** ujawniaj deepfake'i oraz teksty wygenerowane przez AI publikowane w celu informowania opinii publicznej o sprawach leżących w interesie publicznym (art. 50 ust. 4).
+  - **Jak oznaczać i etykietować:** Komisja zachęca do opracowania w tym celu kodeksów praktyk (art. 50 ust. 7). Przed wyborem techniki sprawdź ich aktualny status.
 - **Wysokie ryzyko wynika z zastosowania, nie z technologii.** Wewnętrzny asystent odpowiadający na pytania na podstawie dokumentów HR (Lab 5) to inny przypadek niż system, który szereguje kandydatury albo decyduje o awansach. Ten drugi podlega załącznikowi III (zatrudnienie).
 - Zanim zaplanujesz termin zgodności, przeczytaj rozporządzenie zmieniające [13] i skonsolidowany tekst AI Act w EUR-Lex.
 
@@ -228,7 +231,7 @@ Co z tego wynika dla twojego stosu:
 10. Specyfikacja Model Context Protocol, Authorization, rewizja 2026-07-28. https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
 11. OWASP GenAI Security Project, „OWASP Top 10 for Agentic Applications for 2026”. https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 12. EROD (EDPB), Opinion 28/2024 on certain data protection aspects related to the processing of personal data in the context of AI models (17 grudnia 2024). https://edpb.europa.eu/system/files/2024-12/edpb_opinion_202428_ai-models_en.pdf
-13. Rozporządzenie (UE) 2026/1744 (Digital Omnibus on AI), ELI: http://data.europa.eu/eli/reg/2026/1744/oj ; przegląd: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
+13. Rozporządzenie (UE) 2026/1744 (Digital Omnibus on AI), ELI: http://data.europa.eu/eli/reg/2026/1744/oj ; tekst angielski: https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng ; AI Act, rozporządzenie (UE) 2024/1689: http://data.europa.eu/eli/reg/2024/1689/oj ; przegląd: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
 14. „Digital Omnibus on AI: Regulation (EU) 2026/1744 Is Published in the Official Journal” (źródło wtórne). https://www.nicfab.eu/en/posts/digital-omnibus-ai-official-journal/
 15. „AI literacy: the Digital Omnibus rewrites Article 4 of the AI Act” (źródło wtórne). https://lawandtechnology.eu/en/ai-literacy-digital-omnibus-article-4-ai-act/
 16. Langfuse, „Langfuse joins ClickHouse”. https://langfuse.com/blog/joining-clickhouse ; ClickHouse: https://clickhouse.com/blog/clickhouse-acquires-langfuse-open-source-llm-observability

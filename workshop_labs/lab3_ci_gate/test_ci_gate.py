@@ -21,7 +21,8 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
 
 # Same definitions as Lab 1: what counts as an abstention, how document IDs look, and the judge you calibrated.
-from lab1_evals_and_judge.judge_starter import ABSTENTION, DOC_ID, JUDGE_SYSTEM_PROMPT, llm_judge, wilson_interval
+from lab1_evals_and_judge.judge_starter import (ABSTENTION, DOC_ID, JUDGE_SYSTEM_PROMPT, llm_judge, openai_client,
+                                                parallel_map, wilson_interval)
 
 LAB_DIR = Path(__file__).parent
 load_dotenv(LAB_DIR.parent / ".env")  # OPENAI_API_KEY / OPENAI_MODEL for LIVE_EVAL=1
@@ -69,9 +70,7 @@ def parse_json_output(raw: str) -> dict:
 
 
 def call_model(prompt_text: str, row: dict) -> str:
-    from openai import OpenAI
-
-    resp = OpenAI().chat.completions.create(
+    resp = openai_client().chat.completions.create(
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         temperature=0,
         messages=[{"role": "user", "content": render_prompt(prompt_text, row)}],
@@ -85,7 +84,8 @@ def get_outputs(prompt_path: Path) -> dict[str, str]:
     fixture_path = FIXTURES / f"{prompt_path.stem}.json"
     if os.getenv("LIVE_EVAL") == "1":
         prompt_text = prompt_path.read_text()
-        outputs = {row["id"]: call_model(prompt_text, row) for row in load_rows()}
+        rows = load_rows()
+        outputs = dict(zip([row["id"] for row in rows], parallel_map(lambda row: call_model(prompt_text, row), rows)))
         if os.getenv("RECORD_FIXTURES") == "1":
             model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
             fixture_path.write_text(json.dumps({
@@ -116,7 +116,9 @@ def score_row(row: dict, raw: str) -> Result:
     if unknown:
         return Result(True, False, f"cites IDs that are not in the context: {unknown}", parsed.answer)
     if row["slice"] == "not_covered":
-        abstains = bool(ABSTENTION.search(parsed.answer))
+        # An abstention cites nothing: an answer with citations claims the documents cover the question,
+        # whatever phrase it also contains ("not covered on Starter, so students get 50% off Pro").
+        abstains = bool(ABSTENTION.search(parsed.answer)) and not parsed.citations
         return Result(True, abstains, "abstained" if abstains else "answered a question the context does not cover",
                       parsed.answer)
     if row["must_contain"].lower() not in parsed.answer.lower():
@@ -184,22 +186,35 @@ def test_candidate_no_slice_regression() -> None:
     assert not regressed, header + "\n".join(report)
 
 
+def check_faithfulness(rows: list[dict], cand: dict[str, Result], judge) -> str | None:
+    """None if the candidate is faithful enough, else the failure report. judge(row, answer) -> (verdict, reasoning).
+
+    Only answers with a valid schema can be judged, so they are the denominator: counting broken outputs
+    as faithful inflates the rate (test_candidate_schema_is_valid fails those separately).
+    """
+    judged = [row for row in rows if cand[row["id"]].schema_ok]
+    if not judged:
+        return "REGRESSION: no output with a valid schema, so nothing could be judged for faithfulness"
+    verdicts = parallel_map(lambda row: judge(row, cand[row["id"]].answer), judged)
+    unfaithful = []
+    for row, (verdict, reasoning) in zip(judged, verdicts):
+        answer = cand[row["id"]].answer
+        if verdict == "FAIL":
+            unfaithful.append(f"  {row['id']} {row['query']}\n      answer: {answer}\n      judge : {reasoning}")
+    faithful = len(judged) - len(unfaithful)
+    if faithful / len(judged) >= MIN_PASS_RATE:
+        return None
+    return f"REGRESSION: faithfulness {pct(faithful, len(judged))}\n" + "\n".join(unfaithful)
+
+
 @pytest.mark.skipif(os.getenv("LIVE_EVAL") != "1", reason="semantic faithfulness needs a live judge: run with LIVE_EVAL=1")
 def test_candidate_faithfulness_live() -> None:
     """Reuses the judge from Lab 1. Point JUDGE_PROMPT_FILE at the prompt you calibrated there."""
     prompt_file = os.getenv("JUDGE_PROMPT_FILE")
     judge_prompt = Path(prompt_file).read_text() if prompt_file else JUDGE_SYSTEM_PROMPT
-    rows = load_rows()
-    cand = results(CANDIDATE)
-    unfaithful = []
-    for row in rows:
-        r = cand[row["id"]]
-        if not r.schema_ok:
-            continue
-        verdict, reasoning = llm_judge("binary", judge_prompt,
-                                       {"user_query": row["query"], "retrieved_context": row["context"]}, r.answer)
-        if verdict == "FAIL":
-            unfaithful.append(f"  {row['id']} {row['query']}\n      answer: {r.answer}\n      judge : {reasoning}")
-    faithful = len(rows) - len(unfaithful)
-    assert faithful / len(rows) >= MIN_PASS_RATE, (
-        f"REGRESSION: faithfulness {pct(faithful, len(rows))}\n" + "\n".join(unfaithful))
+
+    def judge(row: dict, answer: str) -> tuple[str, str]:
+        return llm_judge("binary", judge_prompt, {"user_query": row["query"], "retrieved_context": row["context"]}, answer)
+
+    problem = check_faithfulness(load_rows(), results(CANDIDATE), judge)
+    assert problem is None, problem

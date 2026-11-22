@@ -18,9 +18,11 @@ import json
 import math
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Callable, Iterable, Literal, TypeVar
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
@@ -114,10 +116,28 @@ def mock_judge(context: str, answer: str) -> tuple[str, str]:
     return "PASS", "mock: all numbers appear in context (nothing else was checked)"
 
 
-def llm_judge(kind: str, system_prompt: str, row: dict, answer: str) -> tuple[str, str]:
+# Live calls run a few at a time. Keep this low: per-person keys hit their rate limit (HTTP 429) quickly.
+LIVE_WORKERS = int(os.getenv("LIVE_WORKERS", "4"))
+T = TypeVar("T")
+R = TypeVar("R")
+
+
+@lru_cache(maxsize=1)
+def openai_client():
+    """One client for every live call (it is thread-safe). It retries 429s and 5xx with backoff."""
     from openai import OpenAI
 
-    client = OpenAI()
+    return OpenAI(max_retries=5)
+
+
+def parallel_map(fn: Callable[[T], R], items: Iterable[T]) -> list[R]:
+    """fn over items with LIVE_WORKERS threads; results come back in input order."""
+    with ThreadPoolExecutor(max_workers=LIVE_WORKERS) as pool:
+        return list(pool.map(fn, items))
+
+
+def llm_judge(kind: str, system_prompt: str, row: dict, answer: str) -> tuple[str, str]:
+    client = openai_client()
     messages = [
         {"role": "system", "content": system_prompt},
         {
@@ -131,12 +151,12 @@ def llm_judge(kind: str, system_prompt: str, row: dict, answer: str) -> tuple[st
     ]
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     if kind == "likert":
-        resp = client.beta.chat.completions.parse(model=model, temperature=0, messages=messages, response_format=LikertVerdict)
+        resp = client.chat.completions.parse(model=model, temperature=0, messages=messages, response_format=LikertVerdict)
         likert = resp.choices[0].message.parsed
         assert likert is not None
         verdict = "PASS" if likert.score >= LIKERT_PASS_THRESHOLD else "FAIL"
         return verdict, f"score={likert.score}: {likert.reasoning}"
-    resp = client.beta.chat.completions.parse(model=model, temperature=0, messages=messages, response_format=JudgeVerdict)
+    resp = client.chat.completions.parse(model=model, temperature=0, messages=messages, response_format=JudgeVerdict)
     binary = resp.choices[0].message.parsed
     assert binary is not None
     return binary.verdict, binary.reasoning
@@ -203,16 +223,43 @@ class Agreement:
         )
 
 
+def load_traces() -> list[dict]:
+    return [json.loads(line) for line in TRACES_PATH.read_text().splitlines() if line.strip()]
+
+
+def show_trace(trace_id: str) -> None:
+    """Print one trace in full, the way you read it before you label it or argue with the judge."""
+    row = next((r for r in load_traces() if r["id"] == trace_id), None)
+    if row is None:
+        raise SystemExit(f"No trace with id {trace_id!r} in {TRACES_PATH.name}")
+    labels = "  ".join(f"{k}={v}" for k, v in row["labels"].items())
+    print(f"=== {row['id']} (split {row['split']})  human_label={row['human_label']}  {labels}")
+    if row["failure_note"]:
+        print(f"failure_note: {row['failure_note']}")
+    print(f"\nuser_query: {row['user_query']}\n\nretrieved_context:\n{row['retrieved_context']}")
+    print(f"\nmodel_output:\n{row['model_output']}")
+
+
 def evaluate_split(split: str, judge: str, judge_prompt: str, mock: bool) -> None:
-    rows = [json.loads(line) for line in TRACES_PATH.read_text().splitlines() if line.strip()]
-    target = [r for r in rows if r["split"] == split]
+    target = [r for r in load_traces() if r["split"] == split]
     judge_name = f"faithfulness judge ({'mock' if mock else judge})"
     fmt, cit, faith, e2e = (Agreement("format check (code)"), Agreement("citation check (code)"),
                             Agreement(judge_name), Agreement("end-to-end vs human_label"))
 
-    for row in target:
+    checked = [(row, *check_format(row["model_output"])) for row in target]
+
+    def run_judge(item: tuple) -> tuple[str, str] | None:
+        row, _, _, parsed = item
+        if parsed is None:
+            return None  # nothing to judge: the format check already failed
+        if mock:
+            return mock_judge(row["retrieved_context"], parsed.answer)
+        return llm_judge(judge, judge_prompt, row, parsed.answer)
+
+    judged = parallel_map(run_judge, checked)  # the only slow step: live judge calls overlap
+
+    for (row, fmt_ok, fmt_detail, parsed), judgement in zip(checked, judged):
         labels = row["labels"]
-        fmt_ok, fmt_detail, parsed = check_format(row["model_output"])
         fmt.add(row, "PASS" if fmt_ok else "FAIL", labels["format"], fmt_detail)
         pipeline = "PASS" if fmt_ok else "FAIL"
 
@@ -220,10 +267,7 @@ def evaluate_split(split: str, judge: str, judge_prompt: str, mock: bool) -> Non
             cit_ok, cit_detail = check_citations(parsed, row["retrieved_context"])
             if labels["citation"] is not None:
                 cit.add(row, "PASS" if cit_ok else "FAIL", labels["citation"], cit_detail)
-            if mock:
-                verdict, reasoning = mock_judge(row["retrieved_context"], parsed.answer)
-            else:
-                verdict, reasoning = llm_judge(judge, judge_prompt, row, parsed.answer)
+            verdict, reasoning = judgement
             if labels["faithfulness"] is not None:
                 faith.add(row, verdict, labels["faithfulness"], reasoning)
             pipeline = "FAIL" if (not cit_ok or verdict == "FAIL") else "PASS"
@@ -251,7 +295,11 @@ if __name__ == "__main__":
                         help="'likert' runs the vague 1-5 baseline rubric for comparison")
     parser.add_argument("--judge-prompt", type=Path,
                         help="Load the binary judge prompt from a file (e.g. solutions/lab1_judge_prompt.txt)")
+    parser.add_argument("--show", metavar="ID", help="Print one trace in full (e.g. --show t07) and exit")
     args = parser.parse_args()
+    if args.show:
+        show_trace(args.show)
+        raise SystemExit(0)
     if args.mock and args.judge == "likert":
         parser.error("--judge likert needs a live model; there is no offline stand-in for a vague rubric")
     if args.judge_prompt and args.judge == "likert":

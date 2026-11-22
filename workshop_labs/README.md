@@ -15,6 +15,8 @@ python check_env.py                       # exits 1 if something required is mis
 
 `OPENAI_API_KEY` is needed only for the live variants (real judge in Lab 1, `LIVE_EVAL=1` in Lab 3, the red-team scan in Lab 6; the Lab 6 regression tests run offline). The Lab 6 red team runs in local generation mode, so it needs no promptfoo account (details in the Lab 6 README). Langfuse keys are optional: without them Lab 2 prints the trace locally. Run `check_env.py` a few days before the workshop, not on the morning of.
 
+**Facilitator: API keys and rate limits.** Give each participant their own key with a spend limit instead of one shared key: twenty laptops on one key hit HTTP 429 within minutes. Live calls run `LIVE_WORKERS` at a time (default 4), and the client retries 429s with backoff; lower `LIVE_WORKERS` if 429s persist. Every live step has an offline plan B: `--mock` in Lab 1, the recorded fixtures in Lab 3, the replay tests in Lab 6.
+
 For **Lab 3** and **Lab 6**, install Promptfoo (Node.js 18+ required):
 ```bash
 npm install -g promptfoo

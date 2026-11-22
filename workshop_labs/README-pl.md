@@ -15,6 +15,8 @@ python check_env.py                       # kończy się kodem 1, jeśli brakuje
 
 `OPENAI_API_KEY` jest potrzebny tylko w wariantach na żywo (prawdziwy sędzia w Labie 1, `LIVE_EVAL=1` w Labie 3, skan red teamingowy w Labie 6; testy regresyjne z Labu 6 działają offline). Red teaming w Labie 6 działa w trybie lokalnego generowania, więc nie wymaga konta w promptfoo (szczegóły w README Labu 6). Klucze Langfuse są opcjonalne: bez nich Lab 2 wypisuje trace lokalnie. Uruchom `check_env.py` kilka dni przed warsztatami, a nie rano w dniu warsztatów.
 
+**Dla prowadzącego: klucze API i limity zapytań.** Daj każdemu uczestnikowi własny klucz z limitem wydatków zamiast jednego wspólnego: dwadzieścia laptopów na jednym kluczu dostaje HTTP 429 w ciągu kilku minut. Wywołania na żywo idą po `LIVE_WORKERS` naraz (domyślnie 4), a klient ponawia odpowiedzi 429 z narastającym opóźnieniem; jeśli 429 nie ustępują, zmniejsz `LIVE_WORKERS`. Każdy krok na żywo ma plan B offline: `--mock` w Labie 1, nagrane fixtures w Labie 3, testy replay w Labie 6.
+
 Do **Labu 3** i **Labu 6** zainstaluj Promptfoo (wymagany Node.js 18+):
 ```bash
 npm install -g promptfoo

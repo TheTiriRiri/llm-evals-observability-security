@@ -85,6 +85,7 @@ The Model Context Protocol turns every tool server into part of your supply chai
 - Clients send the `resource` parameter (RFC 8707) to bind tokens to one MCP server.
 - Servers validate that a token was issued for them.
 - The specification's security guidance explicitly forbids token passthrough. That is a server forwarding the token it received to another service.
+- These rules cover HTTP transports. A local server on stdio does not use them: it takes its credentials from its environment, so scope those like any other secret on that machine.
 
 **Checklist:**
 - Pin tool definitions by hash, and review the diff whenever they change.
@@ -128,14 +129,16 @@ The Digital Omnibus on AI, **Regulation (EU) 2026/1744**, was published in the O
 | 2 Feb 2025 | Prohibited practices and AI literacy (Art. 4), from the original timeline |
 | 2 Aug 2025 | Obligations for general-purpose AI models, from the original timeline |
 | 2 Aug 2026 | Transparency obligations (Art. 50): not postponed |
-| 2 Dec 2026 | End of the grace period for marking synthetic content of systems already on the market **(to verify: sources disagree)**; two new prohibitions on generating non-consensual intimate imagery and child sexual abuse material **(to verify)** |
+| 2 Dec 2026 | Machine-readable marking (Art. 50(2)) for generative systems placed on the market before 2 Aug 2026; two new prohibitions (Art. 5(1)): AI systems that generate non-consensual intimate imagery or child sexual abuse material [13] |
 | 2 Dec 2027 | High-risk obligations for Annex III systems (postponed from 2 Aug 2026) |
 | 2 Aug 2028 | High-risk obligations for systems in products under Annex I (postponed from 2 Aug 2027) |
 
-- **Article 4 (AI literacy)** [15] **(to verify on EUR-Lex)**: Providers and deployers had to take measures to "ensure, to their best extent, a sufficient level" of AI literacy. They must now "take measures to support the development of AI literacy", without having to guarantee any individual's level.
+- **Article 4 (AI literacy)** [13][15]: Providers and deployers had to take measures to "ensure, to their best extent, a sufficient level" of AI literacy. They must now "take measures to support the development of AI literacy", without having to guarantee any individual's level.
 - **Article 50 for the systems in this workshop:**
-  - A support bot must tell people they are talking to an AI, unless it is obvious.
-  - Generative systems must mark synthetic content in a machine-readable way.
+  - **Who is who.** A team that develops its own support bot and puts it into service under its own name, even for its own use, is usually its provider (Art. 3(3) and 3(11) of Regulation (EU) 2024/1689), not only its deployer. The provider duties then fall on that team.
+  - **Providers:** people must be told they are talking to an AI, unless it is obvious (Art. 50(1)). Generative systems must mark their output in a machine-readable way, as far as technically feasible (Art. 50(2)). This does not apply to assistive functions for standard editing that do not substantially alter the input.
+  - **Deployers:** disclose deepfakes, and AI-generated text published to inform the public on matters of public interest (Art. 50(4)).
+  - **How to mark and label:** the Commission encourages codes of practice for this (Art. 50(7)). Check their current status before you pick a technique.
 - **High-risk is about use, not technology.** An internal assistant that answers questions from HR documents (Lab 5) is a different case from one that ranks candidates or decides promotions. The latter falls under Annex III (employment).
 - Read the amending regulation [13] and the consolidated AI Act on EUR-Lex before you plan a compliance date.
 
@@ -228,7 +231,7 @@ What follows for your stack:
 10. Model Context Protocol specification, Authorization, revision 2026-07-28. https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
 11. OWASP GenAI Security Project, "OWASP Top 10 for Agentic Applications for 2026". https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 12. EDPB, Opinion 28/2024 on certain data protection aspects related to the processing of personal data in the context of AI models (17 December 2024). https://edpb.europa.eu/system/files/2024-12/edpb_opinion_202428_ai-models_en.pdf
-13. Regulation (EU) 2026/1744 (Digital Omnibus on AI), ELI: http://data.europa.eu/eli/reg/2026/1744/oj ; overview: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
+13. Regulation (EU) 2026/1744 (Digital Omnibus on AI), ELI: http://data.europa.eu/eli/reg/2026/1744/oj ; English text: https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng ; the AI Act, Regulation (EU) 2024/1689: http://data.europa.eu/eli/reg/2024/1689/oj ; overview: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
 14. "Digital Omnibus on AI: Regulation (EU) 2026/1744 Is Published in the Official Journal" (secondary). https://www.nicfab.eu/en/posts/digital-omnibus-ai-official-journal/
 15. "AI literacy: the Digital Omnibus rewrites Article 4 of the AI Act" (secondary). https://lawandtechnology.eu/en/ai-literacy-digital-omnibus-article-4-ai-act/
 16. Langfuse, "Langfuse joins ClickHouse". https://langfuse.com/blog/joining-clickhouse ; ClickHouse: https://clickhouse.com/blog/clickhouse-acquires-langfuse-open-source-llm-observability

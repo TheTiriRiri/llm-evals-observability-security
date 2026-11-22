@@ -19,13 +19,14 @@ python check_env.py                       # exits 1 if something required is mis
 npm install -g promptfoo                  # Labs 3 and 6 only
 
 # Tests (offline, no API key)
-pytest                                                        # testpaths: lab3_ci_gate, lab6_guardrails_and_redteam
+pytest                                                        # testpaths: every lab with code (labs 1, 2, 3, 5, 6)
 pytest solutions/lab6_test_redteam_regressions_solution.py -v
+pytest solutions/lab5_test_hardened_app_solution.py -v       # needs Presidio + en_core_web_sm
 pytest lab6_guardrails_and_redteam/test_redteam_regressions.py::test_replay_kb_injection_without_approval_sends_nothing -v
 PROMPT_CANDIDATE=../solutions/lab3_prompt_candidate_fixed.txt pytest lab3_ci_gate   # gate against the reference fix
 
 # Labs (offline)
-python lab1_evals_and_judge/judge_starter.py --mock            # also: --split val, --judge likert, --judge-prompt solutions/lab1_judge_prompt.txt
+python lab1_evals_and_judge/judge_starter.py --mock            # also: --split val, --judge likert, --judge-prompt solutions/lab1_judge_prompt.txt, --show t07
 python lab2_observability/slow_rag_agent.py --requests 10
 python -m solutions.lab2_fast_rag_agent --requests 10
 python lab5_attack_and_harden/vulnerable_app.py
@@ -36,10 +37,13 @@ Two results are expected, not bugs:
 - `lab3_ci_gate::test_candidate_no_slice_regression` fails by design. The shipped candidate prompt regresses the `not_covered` slice, and catching that is the point of the lab.
 - `test_candidate_faithfulness_live` is skipped unless `LIVE_EVAL=1`.
 
+Each lab with code also has tests of its own plumbing, green from the start and independent of the participants' TODOs: `lab1_evals_and_judge/test_judge_runner.py`, `lab2_observability/test_tracing.py`, `lab3_ci_gate/test_gate_scoring.py`, `lab5_attack_and_harden/test_rehydrate.py`, `lab6_guardrails_and_redteam/test_agent_runtime.py`. They replace the OpenAI client and Langfuse with stand-ins, so they never call a live service.
+
 No linter or formatter is configured.
 
 Live runs and switches:
 - **`.env`** comes from `.env.example`. It holds `OPENAI_API_KEY` and `OPENAI_MODEL` (default `gpt-4o-mini`; keep the model configurable), plus optional `LANGFUSE_*` keys for Lab 2.
+- **Live calls in Labs 1 and 3** share `openai_client()` (`max_retries=5`) and `parallel_map()` from `judge_starter.py`. `LIVE_WORKERS` (default 4) sets how many run at once.
 - **Lab 3:**
   - `LIVE_EVAL=1` calls the real model.
   - `RECORD_FIXTURES=1` re-records the fixtures.
@@ -58,7 +62,7 @@ Live runs and switches:
   - `solutions/lab5_hardened_app.py` from `lab5_attack_and_harden/vulnerable_app.py`
   - `solutions/lab6_guardrails_solution.py` from `lab6_guardrails_and_redteam/guardrails.py`
 - Renaming or changing data in a starter can break its solution, so run both after any starter edit.
-- Lab 3 imports its abstention regex, document-ID pattern, judge and `wilson_interval` from `lab1_evals_and_judge/judge_starter.py`. Changes there change the Lab 3 gate.
+- Lab 3 imports its abstention regex, document-ID pattern, judge, `wilson_interval`, `openai_client` and `parallel_map` from `lab1_evals_and_judge/judge_starter.py`. Changes there change the Lab 3 gate.
 
 **Nothing needs an API key by default.**
 - Lab 1 has a `--mock` judge.
@@ -74,12 +78,20 @@ Live runs and switches:
   - re-record with `LIVE_EVAL=1 RECORD_FIXTURES=1`, or
   - update the fixture's hash and outputs by hand.
 - The shipped fixtures are hand-written, not recordings.
+- A `not_covered` row passes only with an abstention phrase **and** an empty `citations` list. The JavaScript assertion in `promptfooconfig.yaml` mirrors `score_row()`; change both together.
+- `check_faithfulness()` divides by the answers with a valid schema, never by all rows.
+
+**Lab 5 re-hydration.**
+- `rehydrate()` in `vulnerable_app.py` is part of the fixed request flow. It runs a single pass, and a placeholder inside a URL becomes `REDACTED`, even on an allowlisted host.
+- `neutralize_placeholders()` defuses placeholder-shaped text planted in documents before redaction. `presidio_engines()` builds the Presidio engines once, pinned to `en_core_web_sm`.
 
 **Lab 6 system under test.**
 - `redteam_target.py` is one agent loop with two entry points:
   - promptfoo calls `call_api()`, which reads the session from `options["config"]["session"]`.
   - Tests call `run_agent(prompt, principal, client=ScriptedClient(...), guards=..., hitl_approved=...)`, using the scripted replies from `replay.py`.
-- Every tool call passes `check_tool_policy(tool, args, principal, hitl_approved)` in this order: unknown tool → role → object-level authorization → recipient allowlist → HITL last.
+- Every tool call is first parsed against its Pydantic argument model (`TOOL_ARGS`, `extra="forbid"`, `strict=True`; `TOOLS` is generated from them). Unknown fields and wrong types fail closed with a `tool_args` event.
+- Then it passes `check_tool_policy(tool, args, principal, hitl_approved)` in this order: unknown tool → role → object-level authorization → recipient allowlist → HITL last.
+- The runtime keeps its own `run.tool_log`. The output guardrail checks only the model's reply. `call_api()` returns `transcript(run)`: the reply, then the tool log under `TOOL_LOG_HEADER`, with reply lines that imitate the log removed. The `graderExamples` in `promptfooconfig_redteam.yaml` use that format, and a test checks it.
 - Identity comes from the server-side `SESSIONS`, never from the model or the request.
 - Help-center articles (`KB_ARTICLES`) are untrusted input. KB-0031 carries an obvious injection that the input tripwire quarantines. KB-0042 is a subtle one that only the tool policy stops.
 - The guard module is injected (`guards=` in tests, `GUARDRAILS_IMPL` for promptfoo), so the same replays run against the starter and the solution.
