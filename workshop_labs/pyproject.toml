@@ -8,14 +8,16 @@ version = "0.1.0"
 description = "Hands-on labs for AI Evals, Observability, and Security"
 requires-python = ">=3.11"
 dependencies = [
-    "openai>=1.50.0",
+    "openai>=1.92.0",  # chat.completions.parse left beta in 1.92.0
     "pydantic>=2.9.0",
     "pytest>=8.3.0",
     # Lab 2 uses the OpenTelemetry-based SDK API (start_as_current_observation,
-    # propagate_attributes, score_current_trace). Tested on 5.2; bump deliberately.
+    # propagate_attributes, create_score, mask=). Tested on 5.2; bump deliberately.
     "langfuse>=5.0,<6",
-    "presidio-analyzer>=2.2.355",
-    "presidio-anonymizer>=2.2.355",
+    # Lab 5 builds numbered, reversible placeholders with a stateful "custom" operator.
+    # Tested on 2.2.366; older releases call the lambda once with a dummy value during validation.
+    "presidio-analyzer>=2.2.366",
+    "presidio-anonymizer>=2.2.366",
     "python-dotenv>=1.0.1",
 ]
 
@@ -33,7 +35,7 @@ packages = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["lab3_ci_gate", "lab6_guardrails_and_redteam"]
+testpaths = ["lab1_evals_and_judge", "lab2_observability", "lab3_ci_gate", "lab5_attack_and_harden", "lab6_guardrails_and_redteam"]
 # Lets `pytest` (not only `python -m pytest`) resolve `lab6_guardrails_and_redteam.*`
 # imports even if the editable install was skipped.
 pythonpath = ["."]

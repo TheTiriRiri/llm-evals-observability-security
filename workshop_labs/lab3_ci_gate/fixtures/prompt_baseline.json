@@ -1,0 +1,27 @@
+{
+  "prompt_file": "prompt_baseline.txt",
+  "prompt_sha256": "514e9121fee9591e4e4ab4bee6720b5f4aaae485af88292a8da46335d3cbb232",
+  "source": "hand-written examples of typical model behaviour for this prompt (not a recording); replace with real outputs via LIVE_EVAL=1 RECORD_FIXTURES=1",
+  "outputs": {
+    "g01": "{\"answer\": \"Annual plans can be fully refunded within 14 days of purchase.\", \"citations\": [\"P-101\"]}",
+    "g02": "{\"answer\": \"EU tenant backups are stored in eu-central-1 (Frankfurt), encrypted with AES-256.\", \"citations\": [\"S-12\"]}",
+    "g03": "{\"answer\": \"Endpoints must respond with a 2xx status within 5 seconds.\", \"citations\": [\"W-05\"]}",
+    "g04": "{\"answer\": \"All endpoints enforce TLS 1.2 or TLS 1.3.\", \"citations\": [\"S-03\"]}",
+    "g05": "{\"answer\": \"A workspace can register up to 10 active webhook endpoints.\", \"citations\": [\"W-01\"]}",
+    "g06": "{\"answer\": \"No. SAML SSO is available only on Enterprise plans.\", \"citations\": [\"P-02\"]}",
+    "g07": "{\"answer\": \"Standard uploads support up to 25 MB per file.\", \"citations\": [\"L-09\"]}",
+    "g08": "{\"answer\": \"/v2/search is limited to 120 requests per minute per token.\", \"citations\": [\"API-19\"]}",
+    "g09": "{\"answer\": \"The Python SDK requires Python 3.10 or newer.\", \"citations\": [\"SDK-04\"]}",
+    "g10": "{\"answer\": \"Yes. Call GET /v2/audit-logs with an admin-scoped token.\", \"citations\": [\"A-11\"]}",
+    "g11": "{\"answer\": \"New workspaces get a 14-day free trial of Pro features.\", \"citations\": [\"P-01\"]}",
+    "g12": "{\"answer\": \"Workspace owners can cancel at any time under Billing > Plan > Cancel.\", \"citations\": [\"B-01\"]}",
+    "g13": "{\"answer\": \"Enable TOTP 2FA under Account > Security.\", \"citations\": [\"A-09\"]}",
+    "g14": "{\"answer\": \"Yes. All provisioned seats are billed monthly, regardless of login activity.\", \"citations\": [\"B-14\"]}",
+    "g15": "{\"answer\": \"Cross-region migration requires a support ticket; self-serve migration is not available.\", \"citations\": [\"M-03\"]}",
+    "g16": "{\"answer\": \"Yes. Every payload is signed with HMAC-SHA256 in the X-Signature header.\", \"citations\": [\"W-04\"]}",
+    "g17": "{\"answer\": \"Yes, SCIM 2.0 user provisioning is included in Enterprise plans.\", \"citations\": [\"A-21\"]}",
+    "g18": "{\"answer\": \"Soft-deleted workspaces are retained for 30 days before they are permanently purged.\", \"citations\": [\"R-08\"]}",
+    "g19": "{\"answer\": \"The documentation does not cover whether an on-premise version is available.\", \"citations\": []}",
+    "g20": "{\"answer\": \"The documentation does not cover student discounts.\", \"citations\": []}"
+  }
+}
